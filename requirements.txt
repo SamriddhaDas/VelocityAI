@@ -1,0 +1,33 @@
+# UrbanPulse Python Requirements
+# Install: pip install -r requirements.txt
+
+# Core AI/ML
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+torch>=2.0.0                # PyTorch (use ROCm build for AMD GPU)
+# torch-rocm                # Uncomment for AMD ROCm GPU support
+
+# Computer Vision
+# ultralytics>=8.0.0        # YOLOv8 (pip install ultralytics)
+
+# API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+websockets>=12.0
+
+# Streaming
+kafka-python>=2.0.2         # Apache Kafka client
+paho-mqtt>=1.6.1            # MQTT protocol
+
+# Database
+# psycopg2-binary>=2.9.0    # PostgreSQL
+# influxdb-client>=3.0.0    # InfluxDB time-series
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.25.0
+
+# DevOps / Containers
+# docker SDK managed externally

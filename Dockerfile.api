@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ && rm -rf /var/lib/apt/lists/*
+
+# Python deps (lightweight subset for container)
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    numpy pandas scikit-learn \
+    fastapi uvicorn[standard] websockets \
+    kafka-python paho-mqtt \
+    python-dotenv httpx
+
+COPY backend/ ./backend/
+COPY kafka/ ./kafka/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "backend.main_api:app", "--host", "0.0.0.0", "--port", "8000"]

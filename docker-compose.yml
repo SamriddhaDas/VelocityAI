@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+
+  # ── Apache Kafka + Zookeeper ─────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: urbanpulse
+      POSTGRES_USER: urbanpulse
+      POSTGRES_PASSWORD: urbanpulse_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ── InfluxDB (time-series) ───────────────────────────────────────────
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      INFLUXDB_DB: urbanpulse
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin1234
+      DOCKER_INFLUXDB_INIT_ORG: urbanpulse
+      DOCKER_INFLUXDB_INIT_BUCKET: city_metrics
+    volumes:
+      - influxdata:/var/lib/influxdb2
+
+  # ── UrbanPulse FastAPI Backend ───────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DATABASE_URL: postgresql://urbanpulse:urbanpulse_secret@postgres:5432/urbanpulse
+      INFLUXDB_URL: http://influxdb:8086
+    depends_on: [kafka, postgres, influxdb]
+    volumes:
+      - ./backend:/app
+
+  # ── Kafka Pipeline (producers + consumer) ────────────────────────────
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: python kafka/kafka_pipeline.py
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on: [kafka, api]
+
+  # ── React Frontend ───────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm start"
+    environment:
+      REACT_APP_WS_URL: ws://localhost:8000/ws
+      REACT_APP_API_URL: http://localhost:8000
+
+volumes:
+  pgdata:
+  influxdata:
