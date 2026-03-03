@@ -8,14 +8,12 @@ from typing import List, Dict, Optional, Tuple
 import warnings
 warnings.filterwarnings("ignore")
 
-# ─────────────────────────────────────────────
 # DATA MODELS
-# ─────────────────────────────────────────────
 
 @dataclass
 class TrafficAlert:
     intersection_id: str
-    congestion_level: float       # 0.0 – 1.0
+    congestion_level: float       
     predicted_delay_minutes: float
     recommended_signal_timing: Dict[str, int]
     timestamp: str
@@ -23,10 +21,10 @@ class TrafficAlert:
 @dataclass
 class WasteAlert:
     bin_id: str
-    fill_level: float             # 0.0 – 1.0
+    fill_level: float             
     overflow_eta_minutes: float
-    priority: str                 # LOW / MEDIUM / HIGH / CRITICAL
-    location: Tuple[float, float] # (lat, lon)
+    priority: str                 
+    location: Tuple[float, float] 
     timestamp: str
 
 @dataclass
@@ -51,8 +49,8 @@ class EnergyAlert:
 class CrowdAlert:
     zone_id: str
     person_count: int
-    density: float                # persons / m²
-    risk_level: str               # NORMAL / ELEVATED / HIGH / CRITICAL
+    density: float                
+    risk_level: str               
     heatmap: List[List[float]]
     timestamp: str
 
@@ -77,18 +75,15 @@ class TrafficAI:
             iid: [random.uniform(0.1, 0.5) for _ in range(60)]
             for iid in self.INTERSECTIONS
         }
-        self._weights = np.random.randn(10, 1) * 0.1   # mock LSTM weights
-
-    # ── LSTM forward pass (simplified) ──────────────────────────────────
+        self._weights = np.random.randn(10, 1) * 0.1   
+        
     def _lstm_forward(self, sequence: List[float]) -> float:
         x = np.array(sequence[-10:])
-        # Sigmoid gate simulation
         forget = 1 / (1 + np.exp(-x))
         cell   = np.tanh(x * forget)
         output = float(np.dot(cell, self._weights).squeeze())
         return max(0.0, min(1.0, output + x[-1] * 0.7))
 
-    # ── Signal optimizer ────────────────────────────────────────────────
     @staticmethod
     def _optimize_signal(congestion: float) -> Dict[str, int]:
         base = max(15, min(90, int(congestion * 90)))
@@ -98,7 +93,6 @@ class TrafficAI:
             "pedestrian_interval": 20 if congestion < 0.5 else 15,
         }
 
-    # ── Public API ───────────────────────────────────────────────────────
     def get_alerts(self) -> List[TrafficAlert]:
         alerts = []
         hour = datetime.now().hour
@@ -138,15 +132,10 @@ class TrafficAI:
 # ─────────────────────────────────────────────
 
 class WasteAI:
-    """
-    Fill-rate ML predictor + Haversine route optimizer.
-    20 bins across simulated city grid.
-    """
 
     NUM_BINS = 20
 
     def __init__(self):
-        # Seed bin locations around city centre (lat, lon)
         np.random.seed(42)
         self._bin_locations = [
             (51.505 + np.random.uniform(-0.05, 0.05),
@@ -154,7 +143,7 @@ class WasteAI:
             for _ in range(self.NUM_BINS)
         ]
         self._fill_levels = np.random.uniform(0.2, 0.95, self.NUM_BINS)
-        self._fill_rates  = np.random.uniform(0.002, 0.012, self.NUM_BINS)  # per tick
+        self._fill_rates  = np.random.uniform(0.002, 0.012, self.NUM_BINS)  
 
     @staticmethod
     def _haversine(a: Tuple[float, float], b: Tuple[float, float]) -> float:
@@ -180,7 +169,6 @@ class WasteAI:
         return route
 
     def _tick(self):
-        """Advance fill levels by one time step."""
         noise = np.random.normal(0, 0.002, self.NUM_BINS)
         self._fill_levels = np.clip(self._fill_levels + self._fill_rates + noise, 0.0, 1.0)
 
@@ -193,7 +181,7 @@ class WasteAI:
     def _overflow_eta(self, fill: float, rate: float) -> float:
         if rate <= 0: return 9999.0
         remaining = 1.0 - fill
-        return round((remaining / rate) * 5, 1)  # 5 min per tick
+        return round((remaining / rate) * 5, 1)  
 
     def get_bin_alerts(self) -> List[WasteAlert]:
         self._tick()
@@ -210,20 +198,16 @@ class WasteAI:
         return alerts
 
     def get_optimised_route(self) -> CollectionRoute:
-        # Only collect bins that are HIGH or CRITICAL
         urgent = [i for i in range(self.NUM_BINS) if self._fill_levels[i] >= 0.80]
         if not urgent:
-            urgent = list(range(self.NUM_BINS))[:5]  # fallback
+            urgent = list(range(self.NUM_BINS))[:5]  
 
         route_indices = self._nearest_neighbour_route(urgent)
         waypoints = [self._bin_locations[i] for i in route_indices]
-
-        # Total distance
         dist = sum(
             self._haversine(waypoints[j], waypoints[j+1])
             for j in range(len(waypoints)-1)
         )
-        # Naive fixed-route distance (all bins in order)
         fixed_dist = sum(
             self._haversine(self._bin_locations[j], self._bin_locations[j+1])
             for j in range(len(self._bin_locations)-1)
@@ -233,7 +217,7 @@ class WasteAI:
         return CollectionRoute(
             bins=[f"BIN-{i+1:03d}" for i in route_indices],
             total_distance_km=round(dist, 2),
-            estimated_duration_minutes=round(dist * 4, 1),  # ~15 km/h city speed
+            estimated_duration_minutes=round(dist * 4, 1),  
             fuel_saving_percent=saving,
             waypoints=waypoints,
         )
@@ -257,10 +241,6 @@ class WasteAI:
 # ─────────────────────────────────────────────
 
 class EnergyAI:
-    """
-    Isolation Forest anomaly detection for energy spikes.
-    Simplified implementation without sklearn dependency for portability.
-    """
 
     ZONES = ["ZONE-N", "ZONE-S", "ZONE-E", "ZONE-W", "ZONE-CENTRAL"]
     BASELINE_KWH = {"ZONE-N": 450, "ZONE-S": 380, "ZONE-E": 420,
@@ -268,11 +248,9 @@ class EnergyAI:
 
     def __init__(self):
         self._history: Dict[str, List[float]] = {z: [] for z in self.ZONES}
-        self._anomaly_threshold = 2.5  # std deviations
-
+        self._anomaly_threshold = 2.5  
     @staticmethod
     def _isolation_score(value: float, history: List[float]) -> float:
-        """Simplified anomaly score: normalised deviation from rolling mean."""
         if len(history) < 5:
             return 0.0
         mu  = np.mean(history[-30:])
@@ -291,10 +269,8 @@ class EnergyAI:
     def _simulate_reading(self, zone: str) -> float:
         baseline = self.BASELINE_KWH[zone]
         hour = datetime.now().hour
-        # Daytime ramp
         multiplier = 1.0 + 0.3 * math.sin(math.pi * (hour - 6) / 12) if 6 <= hour <= 18 else 0.85
         noise = random.gauss(0, baseline * 0.04)
-        # Random spike injection (5% chance)
         spike = random.uniform(1.5, 2.5) * baseline if random.random() < 0.05 else 0.0
         return max(0, baseline * multiplier + noise + spike)
 
@@ -339,12 +315,6 @@ class EnergyAI:
 # ─────────────────────────────────────────────
 
 class CrowdAI:
-    """
-    YOLOv8-powered person detection simulator.
-    Generates density heatmaps and stampede risk alerts.
-    AMD ROCm: 31 ms / frame inference time.
-    """
-
     ZONES = [
         {"id": "PLAZA-MAIN",    "capacity": 500,  "area_m2": 2000},
         {"id": "STATION-NORTH", "capacity": 800,  "area_m2": 1200},
@@ -353,7 +323,7 @@ class CrowdAI:
         {"id": "ARENA",         "capacity": 5000, "area_m2": 8000},
     ]
 
-    HEATMAP_SIZE = 8  # 8×8 grid
+    HEATMAP_SIZE = 8 
 
     def __init__(self):
         self._crowd_state = {z["id"]: random.uniform(0.1, 0.5) for z in self.ZONES}
@@ -366,7 +336,6 @@ class CrowdAI:
         return "NORMAL"
 
     def _generate_heatmap(self, count: int, area: float) -> List[List[float]]:
-        """Generate 8×8 density heatmap with gaussian cluster."""
         grid = np.zeros((self.HEATMAP_SIZE, self.HEATMAP_SIZE))
         num_clusters = random.randint(1, 3)
         for _ in range(num_clusters):
@@ -376,17 +345,14 @@ class CrowdAI:
             for i in range(self.HEATMAP_SIZE):
                 for j in range(self.HEATMAP_SIZE):
                     grid[i][j] += math.exp(-((i-cx)**2 + (j-cy)**2) / (2*sigma**2))
-        # Normalize to actual density
         total = grid.sum() or 1
         density_per_cell = count / area
         grid = (grid / total) * density_per_cell * (self.HEATMAP_SIZE ** 2)
         return [[round(float(v), 2) for v in row] for row in grid]
 
     def _tick_crowd(self, zone_id: str, capacity: int) -> int:
-        """Simulate crowd dynamics (random walk bounded by capacity)."""
         current_util = self._crowd_state[zone_id]
         delta = random.gauss(0, 0.05)
-        # Event spikes
         if random.random() < 0.02:
             delta += random.uniform(0.15, 0.30)
         new_util = max(0.05, min(1.0, current_util + delta))
