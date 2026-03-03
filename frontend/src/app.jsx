@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Config ──────────────────────────────────────────────────────────────
 const WS_URL  = "ws://localhost:8000/ws";
 const API_URL = "http://localhost:8000";
 const REFRESH_INTERVAL = 5000;
 
-// ── Colour palette ──────────────────────────────────────────────────────
 const C = {
   bg:        "#080c14",
   surface:   "#0d1421",
@@ -22,12 +20,10 @@ const C = {
   grid:      "#1a2744",
 };
 
-// ── Risk colour map ──────────────────────────────────────────────────────
 const riskColor = { NORMAL: C.green, ELEVATED: C.yellow, HIGH: C.orange, CRITICAL: C.red };
 const congColor = (v) => v > 0.75 ? C.red : v > 0.50 ? C.orange : v > 0.25 ? C.yellow : C.green;
 const fillColor = (v) => v > 0.85 ? C.red : v > 0.70 ? C.orange : v > 0.50 ? C.yellow : C.green;
 
-// ── Helpers ──────────────────────────────────────────────────────────────
 const pct = (v) => `${Math.round(v * 100)}%`;
 const fmt = (n, d = 1) => Number(n).toFixed(d);
 
@@ -77,7 +73,6 @@ function MiniBar({ value, max = 1, color }) {
   );
 }
 
-// ── Heatmap 8×8 ──────────────────────────────────────────────────────────
 function Heatmap({ data }) {
   if (!data || !data.length) return null;
   const flat = data.flat();
@@ -103,7 +98,6 @@ function Heatmap({ data }) {
   );
 }
 
-// ── Sparkline using SVG ───────────────────────────────────────────────────
 function Sparkline({ history, color = C.accent, height = 40, width = 160 }) {
   if (!history || history.length < 2) return null;
   const max = Math.max(...history, 0.01);
@@ -280,7 +274,6 @@ function CrowdModule({ data }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {/* Zone list */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {alerts.map(a => (
             <div key={a.zone_id}
@@ -305,7 +298,6 @@ function CrowdModule({ data }) {
           ))}
         </div>
 
-        {/* Heatmap */}
         {selected && (
           <div style={{
             background: C.surfaceAlt, border: `1px solid ${C.border}`,
@@ -475,7 +467,6 @@ export default function VelocityAIDashboard() {
     setTick(t => t + 1);
   }, []);
 
-  // Try WebSocket; fall back to mock data
   useEffect(() => {
     let ws;
     try {
@@ -500,7 +491,6 @@ export default function VelocityAIDashboard() {
     }
 
     function startMockPolling() {
-      // Immediately populate with mock data
       updateData(generateMockData());
       timerRef.current = setInterval(() => updateData(generateMockData()), REFRESH_INTERVAL);
     }
@@ -511,7 +501,6 @@ export default function VelocityAIDashboard() {
     };
   }, [updateData]);
 
-  // Styles
   const tabStyle = (tab) => ({
     padding: "8px 20px", cursor: "pointer", fontSize: 12,
     fontWeight: activeTab === tab ? 700 : 400,
@@ -533,7 +522,6 @@ export default function VelocityAIDashboard() {
       minHeight: "100vh", background: C.bg, color: C.text,
       fontFamily: "'DM Mono', 'Courier New', monospace",
     }}>
-      {/* Import Google Fonts */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -543,7 +531,6 @@ export default function VelocityAIDashboard() {
         body { background: ${C.bg}; }
       `}</style>
 
-      {/* Header */}
       <header style={{
         padding: "16px 28px", borderBottom: `1px solid ${C.border}`,
         display: "flex", alignItems: "center", gap: 16,
@@ -559,14 +546,12 @@ export default function VelocityAIDashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
         <nav style={{ display: "flex", marginLeft: 32, gap: 2 }}>
           {TABS.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={tabStyle(tab)}>{tab}</button>
           ))}
         </nav>
 
-        {/* AMD badge */}
         <div style={{
           marginLeft: "auto", background: `${C.accent}11`,
           border: `1px solid ${C.accentDim}`, borderRadius: 8,
@@ -576,16 +561,12 @@ export default function VelocityAIDashboard() {
         </div>
       </header>
 
-      {/* Status bar */}
       <StatusBar connected={connected} lastUpdate={lastUpdate} tick={tick} />
 
-      {/* Main content */}
       <main style={{ padding: "24px 28px", maxWidth: 1400, margin: "0 auto" }}>
 
-        {/* OVERVIEW TAB */}
         {activeTab === "Overview" && (
           <div>
-            {/* Top KPI strip */}
             {data && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
                 <KpiCard label="Avg Congestion" value={pct(data.traffic.average_congestion)}
@@ -599,7 +580,6 @@ export default function VelocityAIDashboard() {
               </div>
             )}
 
-            {/* 2×2 module grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div style={panelStyle}><TrafficModule data={data?.traffic} /></div>
               <div style={panelStyle}><WasteModule   data={data?.waste}   /></div>
@@ -607,7 +587,6 @@ export default function VelocityAIDashboard() {
               <div style={panelStyle}><CrowdModule   data={data?.crowd}   /></div>
             </div>
 
-            {/* Impact stats */}
             <div style={{
               marginTop: 20, background: C.surface, border: `1px solid ${C.border}`,
               borderRadius: 14, padding: 20,
@@ -631,14 +610,12 @@ export default function VelocityAIDashboard() {
           </div>
         )}
 
-        {/* INDIVIDUAL MODULE TABS */}
         {activeTab === "Traffic" && <div style={panelStyle}><TrafficModule data={data?.traffic} /></div>}
         {activeTab === "Waste"   && <div style={panelStyle}><WasteModule   data={data?.waste}   /></div>}
         {activeTab === "Energy"  && <div style={panelStyle}><EnergyModule  data={data?.energy}  /></div>}
         {activeTab === "Crowd"   && <div style={panelStyle}><CrowdModule   data={data?.crowd}   /></div>}
       </main>
 
-      {/* Footer */}
       <footer style={{ padding: "16px 28px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, color: C.textMuted }}>VelocityAI · AMD Slingshot 2026 · AI for Smart Cities</span>
         <span style={{ fontSize: 10, color: C.textMuted }}>FastAPI + Kafka + React · Sub-40ms latency</span>
