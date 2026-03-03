@@ -8,7 +8,6 @@ from typing import Callable, Dict, Any
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 
-# Topic names
 TOPIC_TRAFFIC = "velocityai.traffic.raw"
 TOPIC_WASTE   = "velocityai.waste.raw"
 TOPIC_ENERGY  = "velocityai.energy.raw"
@@ -46,7 +45,6 @@ class KafkaClientWrapper:
             except Exception as e:
                 print(f"Kafka send error: {e}")
         else:
-            # No-op: just print for visibility
             ts = payload.get("timestamp", "?")
             print(f"[KAFKA-NOOP] {topic} | {ts}")
 
@@ -162,12 +160,6 @@ def produce_crowd(interval_sec: float = 1.0, run_once: bool = False):
 # ─────────────────────────────────────────────
 
 def ai_enrichment_consumer(handler: Callable[[str, Dict], Any] = None):
-    """
-    Consumes from all raw topics, runs AI enrichment, and publishes
-    to the unified enriched topic.
-    
-    handler: optional callback(topic, enriched_payload) for custom processing.
-    """
     try:
         from kafka import KafkaConsumer, KafkaProducer
         consumer = KafkaConsumer(
@@ -197,7 +189,6 @@ def ai_enrichment_consumer(handler: Callable[[str, Dict], Any] = None):
 
 
 def _enrich(topic: str, raw: Dict) -> Dict:
-    """Apply lightweight AI scoring to raw sensor data."""
     enriched = dict(raw)
     enriched["enriched_at"] = datetime.utcnow().isoformat()
     enriched["source_topic"] = topic
@@ -231,7 +222,6 @@ def _enrich(topic: str, raw: Dict) -> Dict:
 # ─────────────────────────────────────────────
 
 def start_all_producers():
-    """Launch all four IoT mock producers in background threads."""
     producers = [
         threading.Thread(target=produce_traffic, kwargs={"interval_sec": 1.0},  daemon=True, name="Producer-Traffic"),
         threading.Thread(target=produce_waste,   kwargs={"interval_sec": 5.0},  daemon=True, name="Producer-Waste"),
@@ -248,7 +238,6 @@ if __name__ == "__main__":
     print("🏭 Starting UrbanPulse Kafka Pipeline")
     threads = start_all_producers()
 
-    # Also start enrichment consumer
     consumer_thread = threading.Thread(target=ai_enrichment_consumer, daemon=True, name="AI-Enrichment-Consumer")
     consumer_thread.start()
 
